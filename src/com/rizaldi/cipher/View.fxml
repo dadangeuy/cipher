@@ -30,25 +30,25 @@
         </HBox>
         <HBox alignment="CENTER" spacing="10.0">
             <children>
-                <Label minWidth="100.0" text="Public Key:" />
+                <Label minWidth="90.0" text="Public Key:" />
                 <TextField fx:id="publicKeyView" HBox.hgrow="ALWAYS" />
                 <Button mnemonicParsing="false" onAction="#onLoadPublicKey" text="Load" />
                 <Button mnemonicParsing="false" onAction="#onSavePublicKey" text="Save" />
+                <Button mnemonicParsing="false" onAction="#onEncrypt" prefWidth="70.0" text="Encrypt" />
             </children>
         </HBox>
         <HBox alignment="CENTER" spacing="10.0">
             <children>
-                <Label minWidth="100.0" text="Private Key:" />
+                <Label minWidth="90.0" text="Private Key:" />
                 <TextField fx:id="privateKeyView" HBox.hgrow="ALWAYS" />
                 <Button mnemonicParsing="false" onAction="#onLoadPrivateKey" text="Load" />
                 <Button mnemonicParsing="false" onAction="#onSavePrivateKey" text="Save" />
+                <Button mnemonicParsing="false" onAction="#onDecrypt" prefWidth="70.0" text="Decrypt" />
             </children>
         </HBox>
         <HBox alignment="CENTER" spacing="10.0">
             <children>
-                <Button mnemonicParsing="false" onAction="#onGenerate" text="Generate" />
-                <Button mnemonicParsing="false" onAction="#onEncrypt" text="Encrypt" />
-                <Button mnemonicParsing="false" onAction="#onDecrypt" text="Decrypt" />
+                <Button mnemonicParsing="false" onAction="#onGenerate" text="Generate Key" />
             </children>
         </HBox>
     </children>

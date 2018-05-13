@@ -1,8 +1,8 @@
 package com.rizaldi.cipher;
 
-import com.google.common.primitives.Bytes;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -10,22 +10,13 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.apache.commons.io.FileUtils;
 
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import java.io.File;
+import javax.annotation.Resources;
 import java.io.IOException;
-import java.security.*;
+import java.net.URL;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ResourceBundle;
 
-
-public class Controller {
+public class Controller implements Initializable {
     @FXML
     private TextArea originalView;
     @FXML
@@ -35,138 +26,87 @@ public class Controller {
     @FXML
     private TextField privateKeyView;
 
-    private static final int encrypt_block = 501;
-    private static final int decrypt_block = 512;
-    private static final int key_size = 4096;
+    private static final FileChooser chooser = new FileChooser();
+    private static final RsaCipher cipher = new RsaCipher();
+    private static final RsaKey key = new RsaKey();
 
-    private final FileChooser chooser = new FileChooser();
-    private final Cipher cipher = Cipher.getInstance("RSA");
-    private final KeyFactory factory = KeyFactory.getInstance("RSA");
-    private final KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-
-    private PrivateKey privateKey;
-    private PublicKey publicKey;
     private byte[] originalBytes;
     private byte[] resultBytes;
 
-    public Controller() throws NoSuchPaddingException, NoSuchAlgorithmException {
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        refreshKeyView();
     }
+
 
     @FXML
     private void onOpenFile(ActionEvent event) throws IOException {
-        originalBytes = loadFileWithDialog(event);
-        resultView.clear();
-        originalView.setText(new String(originalBytes));
+        resultBytes = new byte[0];
+        originalBytes = FileUtils.readFileToByteArray(chooser.showOpenDialog(getWindowFromEvent(event)));
+        refreshPreview();
     }
 
     @FXML
     private void onSaveFile(ActionEvent event) throws IOException {
-        saveFileWithDialog(event, resultBytes);
+        FileUtils.writeByteArrayToFile(chooser.showSaveDialog(getWindowFromEvent(event)), resultBytes);
     }
 
     @FXML
     private void onEncrypt() {
-        resultView.clear();
-        if (privateKey == null) onGenerate();
         try {
-            resultBytes = splitEncrypt();
-            resultView.setText(new String(resultBytes));
+            resultBytes = cipher.encrypt(originalBytes, key.getPublicKey());
         } catch (Exception e) {
-            resultView.setText(e.toString());
+            resultBytes = e.toString().getBytes();
         }
+        refreshPreview();
     }
 
     @FXML
     private void onDecrypt() {
-        resultView.clear();
-        if (publicKey == null) onGenerate();
         try {
-            resultBytes = splitDecrypt();
-            resultView.setText(new String(resultBytes));
+            resultBytes = cipher.decrypt(originalBytes, key.getPrivateKey());
         } catch (Exception e) {
-            resultView.setText(e.toString());
+            resultBytes = e.toString().getBytes();
         }
+        refreshPreview();
     }
 
     @FXML
     private void onGenerate() {
-        generator.initialize(key_size);
-        KeyPair pair = generator.genKeyPair();
-        setPublicKey(pair.getPublic());
-        setPrivateKey(pair.getPrivate());
+        key.generateKey();
+        refreshKeyView();
     }
 
     @FXML
     private void onSavePrivateKey(ActionEvent event) throws IOException {
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(privateKey.getEncoded());
-        saveFileWithDialog(event, spec.getEncoded());
+        key.savePrivateKey(chooser.showSaveDialog(getWindowFromEvent(event)));
     }
 
     @FXML
     private void onLoadPrivateKey(ActionEvent event) throws InvalidKeySpecException, IOException {
-        byte[] bytes = loadFileWithDialog(event);
-        setPrivateKey(factory.generatePrivate(new PKCS8EncodedKeySpec(bytes)));
-    }
-
-    private void setPrivateKey(PrivateKey key) {
-        privateKey = key;
-        privateKeyView.setText(new String(key.getEncoded()));
+        key.loadPrivateKey(chooser.showOpenDialog(getWindowFromEvent(event)));
+        refreshKeyView();
     }
 
     @FXML
     private void onSavePublicKey(ActionEvent event) throws IOException {
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(publicKey.getEncoded());
-        saveFileWithDialog(event, spec.getEncoded());
+        key.savePublicKey(chooser.showSaveDialog(getWindowFromEvent(event)));
     }
 
     @FXML
     private void onLoadPublicKey(ActionEvent event) throws InvalidKeySpecException, IOException {
-        byte[] bytes = loadFileWithDialog(event);
-        setPublicKey(factory.generatePublic(new X509EncodedKeySpec(bytes)));
+        key.loadPublicKey(chooser.showSaveDialog(getWindowFromEvent(event)));
+        refreshKeyView();
     }
 
-    private void setPublicKey(PublicKey key) {
-        publicKey = key;
-        publicKeyView.setText(new String(key.getEncoded()));
+    private void refreshPreview() {
+        originalView.setText(new String(originalBytes));
+        resultView.setText(new String(resultBytes));
     }
 
-    private byte[] splitEncrypt() throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
-        List<Byte> result = new LinkedList<>();
-        for (int i = 0; i < originalBytes.length; i += encrypt_block) {
-            byte[] encryptedBytes = encrypt(Arrays.copyOfRange(originalBytes, i, i + encrypt_block));
-            for (byte encryptedByte : encryptedBytes) result.add(encryptedByte);
-        }
-        return Bytes.toArray(result);
-    }
-
-    private byte[] encrypt(byte[] original) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        return cipher.doFinal(original);
-    }
-
-    private byte[] splitDecrypt() throws BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
-        List<Byte> result = new LinkedList<>();
-        for (int i = 0; i < originalBytes.length; i += decrypt_block) {
-            byte[] decryptedBytes = decrypt(Arrays.copyOfRange(originalBytes, i, i + decrypt_block));
-            for (byte decryptedByte : decryptedBytes) result.add(decryptedByte);
-        }
-        return Bytes.toArray(result);
-    }
-
-    private byte[] decrypt(byte[] original) throws InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        return cipher.doFinal(original);
-    }
-
-    private void saveFileWithDialog(ActionEvent event, byte[] bytes) throws IOException {
-        File file = chooser.showSaveDialog(getWindowFromEvent(event));
-        if (file != null) FileUtils.writeByteArrayToFile(file, bytes);
-    }
-
-    private byte[] loadFileWithDialog(ActionEvent event) throws IOException {
-        File file = chooser.showOpenDialog(getWindowFromEvent(event));
-        if (file != null) return FileUtils.readFileToByteArray(file);
-        throw new IOException("no file");
+    private void refreshKeyView() {
+        privateKeyView.setText(new String(key.getPrivateKey().getEncoded()));
+        publicKeyView.setText(new String(key.getPublicKey().getEncoded()));
     }
 
     private Window getWindowFromEvent(ActionEvent event) {
