@@ -10,7 +10,6 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.apache.commons.io.FileUtils;
 
-import javax.annotation.Resources;
 import java.io.IOException;
 import java.net.URL;
 import java.security.spec.InvalidKeySpecException;
