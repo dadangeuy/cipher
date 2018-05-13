@@ -37,7 +37,6 @@ public class Controller implements Initializable {
         refreshKeyView();
     }
 
-
     @FXML
     private void onOpenFile(ActionEvent event) throws IOException {
         resultBytes = new byte[0];
